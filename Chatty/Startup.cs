@@ -11,6 +11,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Chatty.Data;
 using Chatty.Models;
 using Chatty.Services;
+using NETCore.MailKit.Extensions;
+using NETCore.MailKit.Infrastructure.Internal;
 
 namespace Chatty
 {
@@ -29,14 +31,40 @@ namespace Chatty
             services.AddDbContext<ApplicationDbContext>(options =>
                 options.UseSqlServer(Configuration.GetConnectionString("DefaultConnection")));
 
-            services.AddIdentity<ApplicationUser, IdentityRole>()
+            /*services.AddIdentity<ApplicationUser, IdentityRole>()
                 .AddEntityFrameworkStores<ApplicationDbContext>()
-                .AddDefaultTokenProviders();
-
+                .AddDefaultTokenProviders();*/
+            
             // Add application services.
             services.AddTransient<IEmailSender, EmailSender>();
 
+            services.AddIdentity<ApplicationUser, IdentityRole>(config =>
+            {
+                config.SignIn.RequireConfirmedEmail = true;
+            })
+               .AddEntityFrameworkStores<ApplicationDbContext>()
+               .AddDefaultTokenProviders();
+
             services.AddMvc();
+
+            //Add MailKit
+            services.AddMailKit(optionBuilder =>
+            {
+                optionBuilder.UseMailKit(new MailKitOptions()
+                {
+                    //get options from sercets.json
+                    Server = Configuration.GetSection("Email")["Server"],
+                    Port = Convert.ToInt32(Configuration.GetSection("Email")["Port"]),
+                    SenderName = Configuration.GetSection("Email")["Name"],
+                    SenderEmail = Configuration.GetSection("Email")["Account"],
+
+                    // can be optional with no authentication 
+                    Account = Configuration.GetSection("Email")["Account"],
+                    Password = Configuration.GetSection("Email")["Password"],
+                    // enable ssl or tls
+                    Security = true
+                });
+            });
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
